@@ -89,8 +89,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .note-txt{font-size:12px;color:#78350f;line-height:1.5}
 .script-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:8px}
 .edit-hint{font-size:9px;color:var(--muted2);background:var(--surface2);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
-.script-ta{background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--text);line-height:1.6;outline:none;transition:border .15s;width:100%;resize:none;font-family:var(--sans)}
-.script-ta:focus{border-color:var(--accent);background:#fff}
+.script-ta{background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--text);line-height:1.6;outline:none;transition:all .15s;width:100%;resize:vertical;font-family:var(--sans);cursor:text;min-height:60px;-webkit-user-select:text;user-select:text;pointer-events:all}
+.script-ta:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.script-ta:hover{border-color:var(--border2);background:#fff}
 .no-script{font-family:var(--mono);font-size:11px;color:var(--muted);padding:9px 12px;background:var(--surface2);border-radius:7px;border:1px solid var(--border)}
 .gen-row{display:flex;align-items:center;gap:8px;margin:12px 0}
 .gen-btn{font-family:var(--sans);font-weight:700;font-size:12px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;transition:all .15s;display:flex;align-items:center;gap:6px}
@@ -162,30 +163,54 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="tok-status" id="tokStatus">No credentials saved</div>
   </div>
 
-  <div class="sb-section">
-    <label class="fl">Show Configuration</label>
-    <div class="show-cfg">
-      <div>
-        <label class="fl" style="margin-bottom:2px">Show ID or URL</label>
-        <div class="row">
-          <input type="text" class="inp" id="showInp" placeholder="show_id or CMS URL..." style="font-size:10px"/>
-          <button class="btn btn-p btn-sm" onclick="loadShow()" id="loadBtn">Load</button>
+  <div class="sb-section" style="padding-bottom:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <label class="fl" style="margin:0">Shows</label>
+      <button class="btn btn-p btn-xs" onclick="openAddShow()">+ Add Show</button>
+    </div>
+    <div id="showsList" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
+  </div>
+
+  <!-- Hidden inputs still needed for compatibility -->
+  <input type="hidden" id="showInp"/>
+  <input type="hidden" id="asKeyInp" value="a8b654d7-aeed-40dc-8e3b-4f6181c26cb6"/>
+  <input type="hidden" id="asVoiceInp" value="5438303f-36ed-42f7-af4c-4007453faf26"/>
+  <input type="hidden" id="voiceType" value="standard"/>
+
+  <!-- ADD SHOW MODAL -->
+  <div id="addShowModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:420px;max-width:95vw;box-shadow:var(--shadow-lg)">
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px" id="addShowTitle">Add New Show</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:18px">Configure show settings for patch generation</div>
+      <input type="hidden" id="editShowId"/>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="fl" style="margin-bottom:3px">Show Name *</label>
+          <input class="inp" id="m_name" placeholder="e.g. Mech Touch S2"/>
+        </div>
+        <div>
+          <label class="fl" style="margin-bottom:3px">Show ID or CMS URL *</label>
+          <input class="inp" id="m_showid" placeholder="show_id or full CMS URL..."/>
+        </div>
+        <div>
+          <label class="fl" style="margin-bottom:3px">AudioStack API Key *</label>
+          <input type="password" class="inp" id="m_askey" placeholder="a8b654d7-..." value="a8b654d7-aeed-40dc-8e3b-4f6181c26cb6"/>
+        </div>
+        <div>
+          <label class="fl" style="margin-bottom:3px">Voice ID</label>
+          <input class="inp" id="m_voice" placeholder="Auto-detected from CMS · or paste manually"/>
+        </div>
+        <div>
+          <label class="fl" style="margin-bottom:3px">Voice Type</label>
+          <select class="inp" id="m_voicetype">
+            <option value="standard">Standard</option>
+            <option value="expressive">Expressive</option>
+          </select>
         </div>
       </div>
-      <div>
-        <label class="fl" style="margin-bottom:2px">AudioStack API Key</label>
-        <input type="password" class="inp" id="asKeyInp" placeholder="a8b654d7-..." style="font-size:10px"/>
-      </div>
-      <div>
-        <label class="fl" style="margin-bottom:2px">Voice ID (this show)</label>
-        <input type="text" class="inp" id="asVoiceInp" placeholder="5438303f-..." style="font-size:10px"/>
-      </div>
-      <div>
-        <label class="fl" style="margin-bottom:2px">Voice Type</label>
-        <select class="inp" id="voiceType" style="font-size:10px">
-          <option value="standard">Standard</option>
-          <option value="expressive">Expressive</option>
-        </select>
+      <div style="display:flex;gap:8px;margin-top:18px">
+        <button class="btn btn-p" style="flex:1" onclick="saveShow()">Save Show</button>
+        <button class="btn btn-g" onclick="closeAddShow()">Cancel</button>
       </div>
     </div>
   </div>
@@ -262,6 +287,7 @@ window.onload = async () => {
   document.getElementById('asVoiceInp').value=asVoice;
   document.getElementById('voiceType').value=voiceType;
   if(savedShow) document.getElementById('showInp').value=savedShow;
+  await initShows();
 };
 
 async function saveToken(){
@@ -286,6 +312,112 @@ function hdrs(){
 }
 
 // ── Load Show ────────────────────────────────────────────────
+// ── Show Management ──────────────────────────────────────────
+let shows = [];
+let activeShowConfig = null;
+
+async function initShows(){
+  shows = await dbGet('config','shows') || [];
+  // migrate old single show if exists
+  const oldShowInput = await dbGet('config','showInput');
+  const oldAsKey = await dbGet('config','asKey');
+  const oldVoice = await dbGet('config','asVoice');
+  if(oldShowInput && !shows.length){
+    shows.push({ id: Date.now(), name: 'Default Show', showInput: oldShowInput, asKey: oldAsKey||'', voiceId: oldVoice||'', voiceType: 'standard' });
+    await dbSet('config','shows', shows);
+  }
+  renderShowsList();
+}
+
+function renderShowsList(){
+  const el = document.getElementById('showsList');
+  if(!shows.length){
+    el.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--muted2);padding:6px 0">No shows yet — click + Add Show</div>`;
+    return;
+  }
+  el.innerHTML = shows.map(s => `
+    <div style="background:var(--surface2);border:1px solid ${activeShowConfig?.id===s.id?'var(--accent)':'var(--border)'};border-radius:8px;padding:8px 10px;cursor:pointer;transition:all .15s" onclick="selectShow(${s.id})" id="sc-${s.id}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:${activeShowConfig?.id===s.id?'var(--accent)':'var(--text)'}">${s.name}</div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-g btn-xs" onclick="event.stopPropagation();editShow(${s.id})" style="padding:3px 7px;font-size:10px">✏</button>
+          <button class="btn btn-xs" onclick="event.stopPropagation();deleteShow(${s.id})" style="padding:3px 7px;font-size:10px;background:var(--red-light);color:var(--red);border:1px solid #fca5a5">✕</button>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.showInput?.substring?.(0,35)||''}...</div>
+    </div>
+  `).join('');
+}
+
+function openAddShow(){ 
+  document.getElementById('editShowId').value = '';
+  document.getElementById('addShowTitle').textContent = 'Add New Show';
+  document.getElementById('m_name').value = '';
+  document.getElementById('m_showid').value = '';
+  document.getElementById('m_askey').value = asKey || 'a8b654d7-aeed-40dc-8e3b-4f6181c26cb6';
+  document.getElementById('m_voice').value = '';
+  document.getElementById('m_voicetype').value = 'standard';
+  document.getElementById('addShowModal').style.display = 'flex'; 
+}
+function closeAddShow(){ document.getElementById('addShowModal').style.display = 'none'; }
+
+function editShow(id){
+  const s = shows.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('editShowId').value = id;
+  document.getElementById('addShowTitle').textContent = 'Edit Show';
+  document.getElementById('m_name').value = s.name;
+  document.getElementById('m_showid').value = s.showInput;
+  document.getElementById('m_askey').value = s.asKey||'';
+  document.getElementById('m_voice').value = s.voiceId||'';
+  document.getElementById('m_voicetype').value = s.voiceType||'standard';
+  document.getElementById('addShowModal').style.display = 'flex';
+}
+
+async function saveShow(){
+  const editId = document.getElementById('editShowId').value;
+  const name = document.getElementById('m_name').value.trim();
+  const showInput = document.getElementById('m_showid').value.trim();
+  const asKeyVal = document.getElementById('m_askey').value.trim();
+  const voiceId = document.getElementById('m_voice').value.trim();
+  const voiceType = document.getElementById('m_voicetype').value;
+  if(!name||!showInput){ toast('Name and Show ID are required','warn'); return; }
+  if(editId){
+    const idx = shows.findIndex(x=>x.id==editId);
+    if(idx>=0) shows[idx] = {...shows[idx], name, showInput, asKey:asKeyVal, voiceId, voiceType};
+  } else {
+    shows.push({ id: Date.now(), name, showInput, asKey:asKeyVal, voiceId, voiceType });
+  }
+  await dbSet('config','shows', shows);
+  renderShowsList();
+  closeAddShow();
+  toast(editId ? 'Show updated ✓' : 'Show added ✓','ok');
+}
+
+async function deleteShow(id){
+  shows = shows.filter(x=>x.id!==id);
+  await dbSet('config','shows', shows);
+  if(activeShowConfig?.id===id){ activeShowConfig=null; document.getElementById('topTitle').textContent='PatchStudio'; }
+  renderShowsList();
+  toast('Show removed','ok');
+}
+
+async function selectShow(id){
+  const s = shows.find(x=>x.id===id);
+  if(!s) return;
+  activeShowConfig = s;
+  // Set globals from show config
+  asKey = s.asKey || asKey;
+  asVoice = s.voiceId || asVoice;
+  voiceType = s.voiceType || 'standard';
+  document.getElementById('showInp').value = s.showInput;
+  document.getElementById('asKeyInp').value = asKey;
+  document.getElementById('asVoiceInp').value = asVoice;
+  document.getElementById('voiceType').value = voiceType;
+  renderShowsList();
+  await loadShow();
+}
+
 async function loadShow(){
   let input=document.getElementById('showInp').value.trim();
   asKey=document.getElementById('asKeyInp').value.trim();
@@ -307,14 +439,48 @@ async function loadShow(){
     const r=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0`,{headers:hdrs()});
     if(!r.ok) throw new Error(`HTTP ${r.status} — check token`);
     const d=await r.json(), res=d.result;
-    episodes=res.episodes||[];
+    let eps=res.episodes||[];
+
+    // If empty, try fetching with status=all param
+    if(!eps.length){
+      const r2=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0&status=all`,{headers:hdrs()});
+      if(r2.ok){ const d2=await r2.json(); eps=d2.result?.episodes||[]; }
+    }
+
+    // If still empty, try book.show_chapter_list endpoint
+    if(!eps.length){
+      const r3=await fetch(`${CMS_BASE}/book.show_chapter_list?show_id=${activeShowId}&is_novel=0`,{headers:hdrs()});
+      if(r3.ok){ const d3=await r3.json(); eps=d3.result?.chapters||d3.result?.episodes||d3.result?.data||[]; }
+    }
+
+    // If still empty, try book_id based endpoint (book_id from show response)
+    const bookId = res.book_id || res.result?.book_id || '';
+    if(!eps.length && bookId){
+      const r4=await fetch(`${CMS_BASE}/book.show_episodes?book_id=${bookId}&view=cms&is_novel=0`,{headers:hdrs()});
+      if(r4.ok){ const d4=await r4.json(); eps=d4.result?.episodes||[]; }
+    }
+
+    episodes=eps;
     document.getElementById('topTitle').textContent=res.show_title||activeShowId;
     document.getElementById('epCount').textContent=String(episodes.length);
     renderEpList(episodes);
-    setStatus('ready',`${episodes.length} eps`);
-    toast(`Loaded: ${res.show_title}`,'ok');
+    setStatus('ready',`${episodes.length} eps loaded`);
+    toast(`Loaded: ${res.show_title||activeShowId}`,'ok');
+
     if(!episodes.length){
-      document.getElementById('epList').innerHTML=`<div style="padding:12px"><div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">No episodes in response. Enter chapter_id directly:</div><div class="row"><input class="inp" id="chapInp" placeholder="chapter_id..." style="font-size:10px"/><button class="btn btn-p btn-sm" onclick="loadChapter(document.getElementById('chapInp').value,-1)">Go</button></div></div>`;
+      document.getElementById('epList').innerHTML=`
+        <div style="padding:12px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px">
+            Episodes not returned by API.<br>Enter chapter_id manually:
+          </div>
+          <div class="row">
+            <input class="inp" id="chapInp" placeholder="chapter_id..." style="font-size:10px"/>
+            <button class="btn btn-p btn-sm" onclick="loadChapter(document.getElementById('chapInp').value,-1)">Go</button>
+          </div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);margin-top:6px">
+            Find in Network tab: book.episode_details?chapter_id=<b>XXXX</b>
+          </div>
+        </div>`;
     }
   }catch(e){
     setStatus('err','Error'); toast('Load failed: '+e.message,'err');
@@ -356,6 +522,12 @@ async function loadChapter(chapId, idx){
       asVoice = cmsVoice;
       document.getElementById('asVoiceInp').value = cmsVoice;
       await dbSet('config','asVoice', cmsVoice);
+      // Also update the active show config
+      if(activeShowConfig){
+        activeShowConfig.voiceId = cmsVoice;
+        const idx = shows.findIndex(x=>x.id===activeShowConfig.id);
+        if(idx>=0){ shows[idx].voiceId = cmsVoice; await dbSet('config','shows', shows); }
+      }
       toast('Voice auto-set from CMS: ' + cmsVoice, 'ok');
     }
 
@@ -395,22 +567,37 @@ async function loadChapter(chapId, idx){
 // ── Extract Helpers ──────────────────────────────────────────
 function extractLine(remarks){
   if(!remarks) return '';
-  const OPEN=['"','\u201c','\u00ab','\u2018'], CLOSE=['"','\u201d','\u00bb','\u2019'];
-  const m=remarks.match(/[Ll]ine\s+from\s+script\s*[-\u2013:]*\s*/);
+  const OPEN=['"','\u201c','\u00ab','\u2018','\u201e'];
+  const CLOSE=['"','\u201d','\u00bb','\u2019','\u201d'];
+  // Handle all variants: "Line from script", "Line from Script" with -, --, em-dash, colon
+  const m=remarks.match(/[Ll]ine\s+from\s+[Ss]cript\s*[\-\u2013\u2014:]+\s*/);
   if(m){
     const after=remarks.slice(m.index+m[0].length);
     for(let i=0;i<OPEN.length;i++){
       const oi=after.indexOf(OPEN[i]);
-      if(oi!==-1){ const ci=after.indexOf(CLOSE[i],oi+1); return ci!==-1?after.slice(oi+1,ci).trim():after.slice(oi+1).split('\n')[0].trim(); }
+      if(oi!==-1){
+        const ci=after.indexOf(CLOSE[i],oi+1);
+        if(ci!==-1) return after.slice(oi+1,ci).trim();
+        // No closing quote - stop at ; or QC Note or newline
+        const stops=[after.indexOf(';',oi+1),after.search(/QC\s*[Nn]ote/i),after.indexOf('\n',oi+1)].filter(x=>x>oi).sort((a,b)=>a-b);
+        const stop=stops[0]||after.length;
+        return after.slice(oi+1,stop).trim();
+      }
     }
-    return after.split('\n')[0].trim();
+    // No quotes at all
+    const stops=[after.indexOf(';'),after.indexOf('\n'),after.search(/QC\s*[Nn]ote/i)].filter(x=>x>0).sort((a,b)=>a-b);
+    return after.slice(0,stops[0]||after.length).trim();
   }
   return '';
 }
 function extractNote(remarks){
   if(!remarks) return '';
-  const m=remarks.match(/[Nn]ote\s*[-\u2013:]*\s*["\u201c\u00ab]?(.+)/s);
-  return m?m[1].replace(/^["\u201c\u00ab]|["\u201d\u00bb]$/g,'').split('\n')[0].trim():'';
+  const m=remarks.match(/(?:QC\s*)?[Nn]ote\s*[\-\u2013\u2014:]+\s*["\u201c\u00ab]?(.+)/s);
+  if(!m) return '';
+  let note=m[1].replace(/^["\u201c\u00ab]|["\u201d\u00bb]$/g,'').trim();
+  const stop=note.search(/[Ll]ine\s+from\s+[Ss]cript/i);
+  if(stop>-1) note=note.slice(0,stop).trim();
+  return note.split('\n')[0].replace(/["\u201d\u00bb]$/g,'').trim();
 }
 
 // ── Render ───────────────────────────────────────────────────
