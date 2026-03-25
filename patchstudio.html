@@ -337,21 +337,29 @@ function renderShowsList(){
   }
   el.innerHTML = shows.map(s => {
     const isActive = activeShowConfig?.id===s.id;
-    return `<div style="background:${isActive?'var(--accent-light)':'var(--surface2)'};border:2px solid ${isActive?'var(--accent)':'var(--border)'};border-radius:8px;overflow:hidden" id="sc-${s.id}">
-      <div style="padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px" onclick="selectShow(${s.id})">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isActive?'var(--accent)':'var(--text)'}">${s.name}</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(s.showInput||'').substring(0,32)}...</div>
-        </div>
-        ${isActive?'<span style="font-family:var(--mono);font-size:9px;color:var(--accent);flex-shrink:0">● active</span>':''}
-      </div>
-      <div style="display:flex;border-top:1px solid var(--border);background:var(--surface)">
-        <button onclick="selectShow(${s.id})" style="flex:1;font-family:var(--sans);font-weight:700;font-size:10px;padding:5px;border:none;cursor:pointer;background:transparent;color:var(--accent)">▶ Load</button>
-        <button onclick="editShow(${s.id})" style="flex:1;font-family:var(--sans);font-weight:600;font-size:10px;padding:5px;border:none;border-left:1px solid var(--border);cursor:pointer;background:transparent;color:var(--muted)">✏ Edit</button>
-        <button onclick="deleteShow(${s.id})" style="flex:1;font-family:var(--sans);font-weight:600;font-size:10px;padding:5px;border:none;border-left:1px solid var(--border);cursor:pointer;background:transparent;color:var(--red)">✕</button>
-      </div>
-    </div>`;
+    const sid = s.id;
+    return '<div style="border:2px solid '+(isActive?'#2563eb':'#e4e8ef')+';border-radius:8px;overflow:hidden;background:'+(isActive?'#eff4ff':'#f1f3f6')+'" id="sc-'+sid+'">'
+      + '<div style="padding:8px 10px">'
+      + '<div style="font-size:12px;font-weight:700;color:'+(isActive?'#2563eb':'#0f172a')+';margin-bottom:2px">'+s.name+'</div>'
+      + '<div style="font-family:monospace;font-size:9px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.showInput||'').substring(0,34)+'</div>'
+      + '</div>'
+      + '<div style="display:flex;border-top:1px solid #e4e8ef">'
+      + '<button type="button" id="load-'+sid+'" style="flex:1;padding:6px 4px;font-size:11px;font-weight:700;border:none;background:#2563eb;color:#fff;cursor:pointer;font-family:sans-serif">▶ Load</button>'
+      + '<button type="button" id="edit-'+sid+'" style="flex:1;padding:6px 4px;font-size:11px;border:none;border-left:1px solid #e4e8ef;background:#fff;color:#64748b;cursor:pointer;font-family:sans-serif">✏ Edit</button>'
+      + '<button type="button" id="del-'+sid+'" style="flex:1;padding:6px 4px;font-size:11px;border:none;border-left:1px solid #e4e8ef;background:#fff;color:#dc2626;cursor:pointer;font-family:sans-serif">✕</button>'
+      + '</div>'
+      + '</div>';
   }).join('');
+
+  // Attach event listeners after rendering
+  shows.forEach(s => {
+    const loadBtn = document.getElementById('load-'+s.id);
+    const editBtn = document.getElementById('edit-'+s.id);
+    const delBtn  = document.getElementById('del-'+s.id);
+    if(loadBtn) loadBtn.addEventListener('click', () => selectShow(s.id));
+    if(editBtn) editBtn.addEventListener('click', () => editShow(s.id));
+    if(delBtn)  delBtn.addEventListener('click',  () => deleteShow(s.id));
+  });
 }
 
 function openAddShow(){ 
