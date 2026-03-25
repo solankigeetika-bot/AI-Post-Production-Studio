@@ -419,20 +419,15 @@ async function selectShow(id){
   const s = shows.find(x=>x.id===id);
   if(!s) return;
   activeShowConfig = s;
-  // Set globals from show config
   asKey = s.asKey || asKey;
   asVoice = s.voiceId || asVoice;
   voiceType = s.voiceType || 'standard';
-  document.getElementById('showInp').value = s.showInput;
-  document.getElementById('asKeyInp').value = asKey;
-  document.getElementById('asVoiceInp').value = asVoice;
-  document.getElementById('voiceType').value = voiceType;
   renderShowsList();
-  await loadShow();
+  await loadShow(s.showInput);
 }
 
-async function loadShow(){
-  let input=document.getElementById('showInp').value.trim();
+async function loadShow(directInput){
+  let input=directInput||document.getElementById('showInp').value.trim();
   asKey=document.getElementById('asKeyInp').value.trim();
   asVoice=document.getElementById('asVoiceInp').value.trim();
   voiceType=document.getElementById('voiceType').value;
@@ -458,22 +453,24 @@ async function loadShow(){
     document.getElementById('topTitle').textContent = showTitle;
     let eps = res.episodes || [];
 
-    // Step 2: Paginate through all pages to get all episodes
-    if(eps.length > 0 || totalEps > 0){
-      const pageSize = eps.length || 10;
-      const totalPages = totalEps ? Math.ceil(totalEps / pageSize) : 1;
-      setStatus('load', `Loading ${totalEps} episodes...`);
-      document.getElementById('epList').innerHTML = `<div style="padding:14px;text-align:center;font-family:monospace;font-size:10px;color:#64748b">Loading all episodes (page 1/${totalPages})...</div>`;
+    // Step 2: Paginate - fetch all pages
+    setStatus('load', `Loading episodes...`);
+    document.getElementById('epList').innerHTML = `<div style="padding:14px;text-align:center;font-family:monospace;font-size:10px;color:#64748b">Loading episodes...</div>`;
 
-      for(let page=2; page<=Math.min(totalPages+1, 50); page++){
-        const rp=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0&paginate_chapters=true&page_no=${page}`,{headers:hdrs()});
-        if(!rp.ok) break;
-        const dp=await rp.json();
-        const pageEps=dp.result?.episodes||[];
-        if(!pageEps.length) break;
-        eps=[...eps,...pageEps];
-        document.getElementById('epList').innerHTML = `<div style="padding:14px;text-align:center;font-family:monospace;font-size:10px;color:#64748b">Loading... ${eps.length} episodes found</div>`;
-      }
+    let page = 2;
+    let keepGoing = true;
+    while(keepGoing && page <= 100){
+      try{
+        const rp = await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0&paginate_chapters=true&page_no=${page}`, {headers:hdrs()});
+        if(!rp.ok){ keepGoing=false; break; }
+        const dp = await rp.json();
+        const pageEps = dp.result?.episodes || [];
+        if(!pageEps.length){ keepGoing=false; break; }
+        eps = [...eps, ...pageEps];
+        document.getElementById('epList').innerHTML = `<div style="padding:14px;text-align:center;font-family:monospace;font-size:10px;color:#64748b">Loading... ${eps.length} episodes</div>`;
+        page++;
+        if(pageEps.length < 5) break; // last page
+      } catch(e){ break; }
     }
 
     episodes = eps;
