@@ -449,52 +449,38 @@ async function loadShow(){
   document.getElementById('epList').innerHTML='<div style="padding:16px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)">Fetching...</div>';
 
   try{
-    const r=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0`,{headers:hdrs()});
+    // Step 1: Get show info + first page
+    const r=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0&paginate_chapters=true&page_no=1`,{headers:hdrs()});
     if(!r.ok) throw new Error(`HTTP ${r.status} — check token`);
     const d=await r.json(), res=d.result;
-    let eps=res.episodes||[];
+    const showTitle = res.show_title || activeShowId;
+    const totalEps = res.episodes_count || res.pending_chapters_count || 0;
+    document.getElementById('topTitle').textContent = showTitle;
+    let eps = res.episodes || [];
 
-    // If empty, try fetching with status=all param
-    if(!eps.length){
-      const r2=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0&status=all`,{headers:hdrs()});
-      if(r2.ok){ const d2=await r2.json(); eps=d2.result?.episodes||[]; }
+    // Step 2: Paginate through all pages to get all episodes
+    if(eps.length > 0 || totalEps > 0){
+      const pageSize = eps.length || 10;
+      const totalPages = totalEps ? Math.ceil(totalEps / pageSize) : 1;
+      setStatus('load', `Loading ${totalEps} episodes...`);
+      document.getElementById('epList').innerHTML = `<div style="padding:14px;text-align:center;font-family:monospace;font-size:10px;color:#64748b">Loading all episodes (page 1/${totalPages})...</div>`;
+
+      for(let page=2; page<=Math.min(totalPages+1, 50); page++){
+        const rp=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0&paginate_chapters=true&page_no=${page}`,{headers:hdrs()});
+        if(!rp.ok) break;
+        const dp=await rp.json();
+        const pageEps=dp.result?.episodes||[];
+        if(!pageEps.length) break;
+        eps=[...eps,...pageEps];
+        document.getElementById('epList').innerHTML = `<div style="padding:14px;text-align:center;font-family:monospace;font-size:10px;color:#64748b">Loading... ${eps.length} episodes found</div>`;
+      }
     }
 
-    // If still empty, try book.show_chapter_list endpoint
-    if(!eps.length){
-      const r3=await fetch(`${CMS_BASE}/book.show_chapter_list?show_id=${activeShowId}&is_novel=0`,{headers:hdrs()});
-      if(r3.ok){ const d3=await r3.json(); eps=d3.result?.chapters||d3.result?.episodes||d3.result?.data||[]; }
-    }
-
-    // If still empty, try book_id based endpoint (book_id from show response)
-    const bookId = res.book_id || res.result?.book_id || '';
-    if(!eps.length && bookId){
-      const r4=await fetch(`${CMS_BASE}/book.show_episodes?book_id=${bookId}&view=cms&is_novel=0`,{headers:hdrs()});
-      if(r4.ok){ const d4=await r4.json(); eps=d4.result?.episodes||[]; }
-    }
-
-    episodes=eps;
-    document.getElementById('topTitle').textContent=res.show_title||activeShowId;
-    document.getElementById('epCount').textContent=String(episodes.length);
-    renderEpList(episodes);
-    setStatus('ready',`${episodes.length} eps loaded`);
-    toast(`Loaded: ${res.show_title||activeShowId}`,'ok');
-
-    if(!episodes.length){
-      document.getElementById('epList').innerHTML=`
-        <div style="padding:12px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px">
-            Episodes not returned by API.<br>Enter chapter_id manually:
-          </div>
-          <div class="row">
-            <input class="inp" id="chapInp" placeholder="chapter_id..." style="font-size:10px"/>
-            <button class="btn btn-p btn-sm" onclick="loadChapter(document.getElementById('chapInp').value,-1)">Go</button>
-          </div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);margin-top:6px">
-            Find in Network tab: book.episode_details?chapter_id=<b>XXXX</b>
-          </div>
-        </div>`;
-    }
+    episodes = eps;
+    document.getElementById('epCount').textContent = String(episodes.length);
+    renderEpList(episodes, totalEps, showTitle);
+    setStatus('ready', `${episodes.length} eps loaded`);
+    toast(`Loaded: ${showTitle} — ${episodes.length} episodes`, 'ok');
   }catch(e){
     setStatus('err','Error'); toast('Load failed: '+e.message,'err');
     document.getElementById('epList').innerHTML=`<div style="padding:14px;font-family:var(--mono);font-size:10px;color:var(--red)">${e.message}</div>`;
@@ -502,16 +488,46 @@ async function loadShow(){
   document.getElementById('loadBtn').disabled=false;
 }
 
-function renderEpList(eps){
+function renderEpList(eps, totalEps, showTitle){
   const el=document.getElementById('epList');
-  el.innerHTML=eps.map((ep,i)=>{
-    const st=ep.audio_status||ep.status||'';
-    const qc=st==='issues_in_raw'||st==='raw_under_qc'||st.toLowerCase().includes('issue')||st.toLowerCase().includes('qc');
-    return `<div class="ep-item" onclick="loadChapter('${ep.chapter_id}',${i})" id="epi-${i}">
-      <div class="ep-title">${ep.chapter_title||`Ep ${i+1}`}${qc?`<span class="ep-badge">QC</span>`:''}</div>
-      <div class="ep-meta">${ep.audio_duration?fmtDur(ep.audio_duration)+' · ':''}<span style="font-size:9px">${st.replace(/_/g,' ')}</span></div>
+  if(eps.length){
+    el.innerHTML=eps.map((ep,i)=>{
+      const st=ep.audio_status||ep.status||'';
+      const qc=st==='issues_in_raw'||st==='raw_under_qc'||st.toLowerCase().includes('issue')||st.toLowerCase().includes('qc');
+      return `<div class="ep-item" id="epi-${i}">
+        <div class="ep-title">${ep.chapter_title||`Ep ${i+1}`}${qc?`<span class="ep-badge">QC</span>`:''}</div>
+        <div class="ep-meta">${ep.audio_duration?fmtDur(ep.audio_duration)+' · ':''}<span style="font-size:9px">${st.replace(/_/g,' ')}</span></div>
+      </div>`;
+    }).join('');
+    // Attach click listeners
+    eps.forEach((ep,i)=>{
+      const el2=document.getElementById(`epi-${i}`);
+      if(el2) el2.addEventListener('click',()=>loadChapter(ep.chapter_id,i));
+    });
+    return;
+  }
+
+  // No episodes from API — show manual input with helpful context
+  el.innerHTML=`
+    <div style="padding:10px">
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:9px;margin-bottom:10px">
+        <div style="font-family:monospace;font-size:10px;font-weight:700;color:#92400e;margin-bottom:3px">Show loaded — ${totalEps||0} episodes exist</div>
+        <div style="font-family:monospace;font-size:9px;color:#78350f;line-height:1.6">API doesn't return episode list for this show type. Enter any chapter_id to load an episode directly.</div>
+      </div>
+      <div style="font-family:monospace;font-size:10px;font-weight:700;color:#334155;margin-bottom:5px">Enter chapter_id:</div>
+      <div style="display:flex;gap:5px;margin-bottom:6px">
+        <input class="inp" id="chapInp" placeholder="47417b69b8acf9f9..." style="font-size:10px"/>
+        <button type="button" id="chapGoBtn" style="padding:7px 10px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0">Go</button>
+      </div>
+      <div style="font-family:monospace;font-size:9px;color:#94a3b8;line-height:1.6">
+        How to find chapter_id:<br>
+        1. Open CMS → click any episode<br>
+        2. Network tab → find book.episode_details<br>
+        3. Copy chapter_id from the URL
+      </div>
     </div>`;
-  }).join('');
+  const cgBtn=document.getElementById('chapGoBtn');
+  if(cgBtn) cgBtn.addEventListener('click',()=>{ const v=document.getElementById('chapInp').value.trim(); if(v) loadChapter(v,-1); });
 }
 
 // ── Load Episode ─────────────────────────────────────────────
