@@ -149,12 +149,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   </div>
 
   <div class="sb-section">
-    <label class="fl">CMS Auth Token</label>
-    <div class="row" style="margin-bottom:4px">
-      <input type="password" class="inp" id="tokenInp" placeholder="Paste Bearer token..." style="font-size:10px"/>
-      <button class="btn btn-g btn-sm" onclick="saveToken()">Save</button>
+    <label class="fl">CMS Credentials</label>
+    <div style="margin-bottom:6px">
+      <label class="fl" style="margin-bottom:3px">access-token</label>
+      <input type="password" class="inp" id="tokenInp" placeholder="eyJ0eXAiOiJKV1Qi..." style="font-size:10px"/>
     </div>
-    <div class="tok-status" id="tokStatus">No token saved</div>
+    <div style="margin-bottom:6px">
+      <label class="fl" style="margin-bottom:3px">uid</label>
+      <input type="text" class="inp" id="uidInp" placeholder="e6ed06ab0fe4b734..." style="font-size:10px"/>
+    </div>
+    <button class="btn btn-p btn-sm" onclick="saveToken()" style="width:100%">Save Credentials</button>
+    <div class="tok-status" id="tokStatus">No credentials saved</div>
   </div>
 
   <div class="sb-section">
@@ -218,7 +223,7 @@ const CMS_BASE = 'https://api.cms.pocketfm.com/v2/content_api';
 const AS_BASE  = 'https://v2.api.audio';
 const DB_NAME  = 'PatchStudioDB';
 
-let authToken='', asKey='', asVoice='', voiceType='standard';
+let authToken='', uid='', asKey='', asVoice='', voiceType='standard';
 let episodes=[], activeEp=null, activeShowId='';
 let remarks=[], RS={};
 let db=null, finalAudioUrl=null, finalAudioBlob=null;
@@ -249,7 +254,10 @@ window.onload = async () => {
   asVoice   = await dbGet('config','asVoice') || '5438303f-36ed-42f7-af4c-4007453faf26';
   voiceType = await dbGet('config','voiceType') || 'standard';
   const savedShow = await dbGet('config','showInput') || '';
-  if(authToken){ document.getElementById('tokenInp').value=authToken; setTokOk(true); }
+  uid = await dbGet('config','uid') || '';
+  if(authToken){ document.getElementById('tokenInp').value=authToken; }
+  if(uid){ document.getElementById('uidInp').value=uid; }
+  if(authToken && uid) setTokOk(true);
   document.getElementById('asKeyInp').value=asKey;
   document.getElementById('asVoiceInp').value=asVoice;
   document.getElementById('voiceType').value=voiceType;
@@ -258,12 +266,24 @@ window.onload = async () => {
 
 async function saveToken(){
   authToken=document.getElementById('tokenInp').value.trim();
+  uid=document.getElementById('uidInp').value.trim();
   await dbSet('config','token',authToken);
-  setTokOk(!!authToken);
-  toast(authToken?'Token saved':'Token cleared', authToken?'ok':'warn');
+  await dbSet('config','uid',uid);
+  setTokOk(!!(authToken && uid));
+  toast(authToken?'Credentials saved ✓':'Cleared', authToken?'ok':'warn');
 }
-function setTokOk(ok){ const e=document.getElementById('tokStatus'); e.textContent=ok?'Token saved ✓':'No token'; e.className='tok-status'+(ok?' tok-ok':''); }
-function hdrs(){ return {'Content-Type':'application/json','Authorization':authToken?`Bearer ${authToken}`:''}; }
+function setTokOk(ok){ const e=document.getElementById('tokStatus'); e.textContent=ok?'Credentials saved ✓':'No credentials saved'; e.className='tok-status'+(ok?' tok-ok':''); }
+function hdrs(){
+  return {
+    'Content-Type':'application/json',
+    'access-token': authToken,
+    'uid': uid,
+    'app-client': 'consumer-web',
+    'app-version': '180',
+    'auth-token': 'web-auth',
+    'source': 'cms',
+  };
+}
 
 // ── Load Show ────────────────────────────────────────────────
 async function loadShow(){
@@ -277,7 +297,7 @@ async function loadShow(){
   const m=input.match(/show_id=([a-f0-9]+)/i)||input.match(/id=([a-f0-9]{30,})/i);
   activeShowId=m?m[1]:input;
   if(!activeShowId){toast('Enter a valid show ID or URL','warn');return;}
-  if(!authToken){toast('Save your CMS auth token first','warn');return;}
+  if(!authToken||!uid){toast('Save your CMS access-token and uid first','warn');return;}
 
   setStatus('load','Loading...');
   document.getElementById('loadBtn').disabled=true;
@@ -318,7 +338,7 @@ function renderEpList(eps){
 // ── Load Episode ─────────────────────────────────────────────
 async function loadChapter(chapId, idx){
   if(!chapId){toast('Enter chapter_id','warn');return;}
-  if(!authToken){toast('No auth token','warn');return;}
+  if(!authToken||!uid){toast('No credentials — save access-token and uid first','warn');return;}
   document.querySelectorAll('.ep-item').forEach(e=>e.classList.remove('active'));
   if(idx>=0) document.getElementById(`epi-${idx}`)?.classList.add('active');
   setStatus('load','Loading...'); showOv('⏳','Loading Episode','Fetching QC remarks...',0);
