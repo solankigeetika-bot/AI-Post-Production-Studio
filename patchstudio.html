@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PatchStudio — CMS QC Patch Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#f7f8fa;--surface:#fff;--surface2:#f1f3f6;--surface3:#e8ecf2;
+  --border:#e4e8ef;--border2:#d0d7e3;
+  --accent:#2563eb;--accent-light:#eff4ff;--accent-dark:#1d4ed8;
+  --green:#16a34a;--green-light:#f0fdf4;--green-dark:#15803d;
+  --red:#dc2626;--red-light:#fef2f2;
+  --orange:#ea580c;--orange-light:#fff7ed;
+  --yellow:#ca8a04;--yellow-light:#fefce8;
+  --purple:#7c3aed;--purple-light:#f5f3ff;
+  --text:#0f172a;--text2:#334155;--muted:#64748b;--muted2:#94a3b8;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  --r:10px;--shadow:0 1px 4px rgba(0,0,0,.08);--shadow-lg:0 4px 20px rgba(0,0,0,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:290px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-logo{padding:16px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sb-logo-text{font-size:15px;font-weight:800;letter-spacing:-.3px}
+.sb-logo-text span{color:var(--accent)}
+.sb-section{padding:12px 14px;border-bottom:1px solid var(--border)}
+.fl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:5px}
+.inp{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none;transition:border .15s;width:100%}
+.inp:focus{border-color:var(--accent);background:#fff}
+.inp::placeholder{color:var(--muted2)}
+.row{display:flex;gap:6px;align-items:center}
+.btn{font-family:var(--sans);font-weight:700;font-size:12px;padding:7px 13px;border-radius:7px;border:none;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--accent);color:#fff}.btn-p:not(:disabled):hover{background:var(--accent-dark)}
+.btn-g{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}.btn-g:not(:disabled):hover{border-color:var(--accent);color:var(--accent)}
+.btn-green{background:var(--green);color:#fff}.btn-green:not(:disabled):hover{background:var(--green-dark)}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:6px}
+.tok-status{font-family:var(--mono);font-size:9px;color:var(--muted2);margin-top:4px}
+.tok-ok{color:var(--green)}
+.show-cfg{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ep-scroll{flex:1;overflow-y:auto}
+.ep-head{padding:8px 14px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.ep-item{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.ep-item:hover{background:var(--surface2)}.ep-item.active{background:var(--accent-light);border-left:3px solid var(--accent)}
+.ep-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.ep-meta{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.ep-badge{display:inline-block;background:var(--orange-light);color:var(--orange);font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:4px;margin-left:5px;border:1px solid #fed7aa}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-pill{font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid;white-space:nowrap}
+.sp-ready{background:var(--green-light);color:var(--green);border-color:#86efac}
+.sp-load{background:var(--yellow-light);color:var(--yellow);border-color:#fde047;animation:blink 1s infinite}
+.sp-err{background:var(--red-light);color:var(--red);border-color:#fca5a5}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.content{flex:1;overflow-y:auto;padding:18px 22px}
+.stitch-ready-bar{background:linear-gradient(135deg,var(--green-light),#dcfce7);border:1.5px solid #86efac;border-radius:var(--r);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.srb-text{font-size:13px;font-weight:700;color:var(--green)}
+.srb-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
+.final-section{background:var(--surface);border:2px solid var(--green);border-radius:var(--r);padding:16px 18px;margin-bottom:18px;box-shadow:var(--shadow-lg)}
+.final-title{font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.final-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.upload-status{font-family:var(--mono);font-size:10px;padding:7px 12px;border-radius:6px;margin-top:8px}
+.us-ok{background:var(--green-light);color:var(--green)}.us-err{background:var(--red-light);color:var(--red)}.us-load{background:var(--yellow-light);color:var(--yellow);animation:blink 1s infinite}
+.op-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.op-lbl{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.op-count{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent)}
+.remarks-grid{display:flex;flex-direction:column;gap:16px}
+.rc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .2s}
+.rc:hover{box-shadow:var(--shadow-lg)}.rc.rc-acc{border-color:#86efac}.rc.rc-dis{opacity:.45;border-color:#fca5a5}
+.rc-hdr{padding:11px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rc-time{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:3px 8px;border-radius:5px;border:1px solid #bfdbfe}
+.rc-type{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid}
+.t-misp{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.t-mod{background:#ede9fe;color:#5b21b6;border-color:#ddd6fe}
+.t-qual{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+.rc-email{font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:auto}
+.rc-sbadge{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px}
+.rsb-acc{background:var(--green-light);color:var(--green);border:1px solid #86efac}
+.rsb-dis{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}
+.rc-body{padding:14px 16px}
+.note-box{background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:9px 12px;margin-bottom:12px}
+.note-lbl{font-family:var(--mono);font-size:9px;color:#92400e;letter-spacing:1px;margin-bottom:3px}
+.note-txt{font-size:12px;color:#78350f;line-height:1.5}
+.script-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:8px}
+.edit-hint{font-size:9px;color:var(--muted2);background:var(--surface2);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+.script-ta{background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--text);line-height:1.6;outline:none;transition:border .15s;width:100%;resize:none;font-family:var(--sans)}
+.script-ta:focus{border-color:var(--accent);background:#fff}
+.no-script{font-family:var(--mono);font-size:11px;color:var(--muted);padding:9px 12px;background:var(--surface2);border-radius:7px;border:1px solid var(--border)}
+.gen-row{display:flex;align-items:center;gap:8px;margin:12px 0}
+.gen-btn{font-family:var(--sans);font-weight:700;font-size:12px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;transition:all .15s;display:flex;align-items:center;gap:6px}
+.gen-btn:not(:disabled):hover{background:var(--accent-dark);transform:translateY(-1px)}.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+.takes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tc{background:var(--surface2);border:2px solid var(--border);border-radius:9px;padding:12px;min-height:120px;transition:all .2s}
+.tc.tk-gen{border-color:#93c5fd;background:#eff6ff;animation:blink 1s infinite}
+.tc.tk-acc{border-color:var(--green);background:var(--green-light)}
+.tc.tk-dis{border-color:#fca5a5;background:var(--red-light);opacity:.5}
+.take-num{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+.take-spin{text-align:center;padding:18px;font-family:var(--mono);font-size:11px;color:var(--accent)}
+.take-empty{text-align:center;padding:18px;font-family:var(--mono);font-size:10px;color:var(--muted2)}
+.take-acts{display:flex;gap:5px;margin-top:8px}
+.ta-acc{flex:1;font-family:var(--sans);font-weight:700;font-size:10px;padding:6px;border-radius:6px;border:none;cursor:pointer;background:var(--green);color:#fff}
+.ta-acc:disabled{opacity:.5;cursor:not-allowed}.ta-acc:not(:disabled):hover{background:var(--green-dark)}
+.ta-dis{flex:1;font-family:var(--sans);font-weight:700;font-size:10px;padding:6px;border-radius:6px;border:1px solid #fca5a5;cursor:pointer;background:var(--surface);color:var(--red)}
+.ta-dis:hover{background:var(--red-light)}
+.empty{text-align:center;padding:70px 30px}
+.empty-icon{font-size:44px;margin-bottom:12px}
+.empty-title{font-size:17px;font-weight:700;color:var(--text2);margin-bottom:5px}
+.empty-sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.overlay{position:fixed;inset:0;background:rgba(247,248,250,.88);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px)}
+.overlay.show{display:flex}
+.ov-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 36px;text-align:center;box-shadow:var(--shadow-lg);max-width:300px}
+.ov-icon{font-size:30px;margin-bottom:10px}
+.ov-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.ov-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px}
+.prog-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--purple));border-radius:2px;transition:width .4s}
+.toasts{position:fixed;bottom:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 15px;font-family:var(--mono);font-size:11px;color:var(--text);box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:7px;animation:slideIn .25s ease;max-width:340px}
+@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.t-ok{border-color:#86efac}.t-err{border-color:#fca5a5}.t-warn{border-color:#fde68a}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="toasts" id="toasts"></div>
+<div class="overlay" id="overlay">
+  <div class="ov-box">
+    <div class="ov-icon" id="ovIcon">⏳</div>
+    <div class="ov-title" id="ovTitle">Processing...</div>
+    <div class="ov-sub" id="ovSub">Please wait</div>
+    <div class="prog-bg"><div class="prog-fill" id="ovProg" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="app">
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">🎙</div>
+    <div>
+      <div class="sb-logo-text">Patch<span>Studio</span></div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1px">CMS QC PATCH GENERATOR</div>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <label class="fl">CMS Auth Token</label>
+    <div class="row" style="margin-bottom:4px">
+      <input type="password" class="inp" id="tokenInp" placeholder="Paste Bearer token..." style="font-size:10px"/>
+      <button class="btn btn-g btn-sm" onclick="saveToken()">Save</button>
+    </div>
+    <div class="tok-status" id="tokStatus">No token saved</div>
+  </div>
+
+  <div class="sb-section">
+    <label class="fl">Show Configuration</label>
+    <div class="show-cfg">
+      <div>
+        <label class="fl" style="margin-bottom:2px">Show ID or URL</label>
+        <div class="row">
+          <input type="text" class="inp" id="showInp" placeholder="show_id or CMS URL..." style="font-size:10px"/>
+          <button class="btn btn-p btn-sm" onclick="loadShow()" id="loadBtn">Load</button>
+        </div>
+      </div>
+      <div>
+        <label class="fl" style="margin-bottom:2px">AudioStack API Key</label>
+        <input type="password" class="inp" id="asKeyInp" placeholder="a8b654d7-..." style="font-size:10px"/>
+      </div>
+      <div>
+        <label class="fl" style="margin-bottom:2px">Voice ID (this show)</label>
+        <input type="text" class="inp" id="asVoiceInp" placeholder="5438303f-..." style="font-size:10px"/>
+      </div>
+      <div>
+        <label class="fl" style="margin-bottom:2px">Voice Type</label>
+        <select class="inp" id="voiceType" style="font-size:10px">
+          <option value="standard">Standard</option>
+          <option value="expressive">Expressive</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="ep-scroll">
+    <div class="ep-head">
+      <span>Episodes</span>
+      <span id="epCount" style="font-family:var(--mono);font-size:9px;color:var(--muted2)"></span>
+    </div>
+    <div id="epList">
+      <div style="padding:18px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted2)">Load a show to see episodes</div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topTitle">PatchStudio</div>
+    <div class="status-pill sp-ready" id="topStatus">Ready</div>
+    <button class="btn btn-g btn-sm" id="genAllBtn" onclick="generateAllPending()" style="display:none">⚡ Gen All</button>
+    <button class="btn btn-orange btn-sm" id="stitchAllBtn" onclick="stitchAll()" style="display:none">🔗 Stitch All &amp; Preview</button>
+  </div>
+  <div class="content" id="mainContent">
+    <div class="empty">
+      <div class="empty-icon">🎙</div>
+      <div class="empty-title">Select an episode</div>
+      <div class="empty-sub">Load a show → pick episode → generate 3 takes → accept best → stitch all → approve</div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+const CMS_BASE = 'https://api.cms.pocketfm.com/v2/content_api';
+const AS_BASE  = 'https://v2.api.audio';
+const DB_NAME  = 'PatchStudioDB';
+
+let authToken='', asKey='', asVoice='', voiceType='standard';
+let episodes=[], activeEp=null, activeShowId='';
+let remarks=[], RS={};
+let db=null, finalAudioUrl=null, finalAudioBlob=null;
+
+// ── IndexedDB ────────────────────────────────────────────────
+async function initDB() {
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open(DB_NAME,2);
+    req.onupgradeneeded = e => {
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('patches')) d.createObjectStore('patches',{keyPath:'k'});
+      if(!d.objectStoreNames.contains('config'))  d.createObjectStore('config', {keyPath:'k'});
+    };
+    req.onsuccess = e => { db=e.target.result; res(db); };
+    req.onerror   = e => rej(e);
+  });
+}
+async function dbSet(store,k,v){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); tx.objectStore(store).put({k,v}); tx.oncomplete=res; tx.onerror=rej; }); }
+async function dbGet(store,k){ return new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const r=tx.objectStore(store).get(k); r.onsuccess=e=>res(e.target.result?.v); r.onerror=rej; }); }
+async function dbSetBlob(k,blob){ return new Promise((res,rej)=>{ const tx=db.transaction('patches','readwrite'); tx.objectStore('patches').put({k,v:blob}); tx.oncomplete=res; tx.onerror=rej; }); }
+async function dbGetBlob(k){ return new Promise((res,rej)=>{ const tx=db.transaction('patches','readonly'); const r=tx.objectStore('patches').get(k); r.onsuccess=e=>res(e.target.result?.v); r.onerror=rej; }); }
+
+// ── Init ─────────────────────────────────────────────────────
+window.onload = async () => {
+  await initDB();
+  authToken = await dbGet('config','token') || '';
+  asKey     = await dbGet('config','asKey') || 'a8b654d7-aeed-40dc-8e3b-4f6181c26cb6';
+  asVoice   = await dbGet('config','asVoice') || '5438303f-36ed-42f7-af4c-4007453faf26';
+  voiceType = await dbGet('config','voiceType') || 'standard';
+  const savedShow = await dbGet('config','showInput') || '';
+  if(authToken){ document.getElementById('tokenInp').value=authToken; setTokOk(true); }
+  document.getElementById('asKeyInp').value=asKey;
+  document.getElementById('asVoiceInp').value=asVoice;
+  document.getElementById('voiceType').value=voiceType;
+  if(savedShow) document.getElementById('showInp').value=savedShow;
+};
+
+async function saveToken(){
+  authToken=document.getElementById('tokenInp').value.trim();
+  await dbSet('config','token',authToken);
+  setTokOk(!!authToken);
+  toast(authToken?'Token saved':'Token cleared', authToken?'ok':'warn');
+}
+function setTokOk(ok){ const e=document.getElementById('tokStatus'); e.textContent=ok?'Token saved ✓':'No token'; e.className='tok-status'+(ok?' tok-ok':''); }
+function hdrs(){ return {'Content-Type':'application/json','Authorization':authToken?`Bearer ${authToken}`:''}; }
+
+// ── Load Show ────────────────────────────────────────────────
+async function loadShow(){
+  let input=document.getElementById('showInp').value.trim();
+  asKey=document.getElementById('asKeyInp').value.trim();
+  asVoice=document.getElementById('asVoiceInp').value.trim();
+  voiceType=document.getElementById('voiceType').value;
+  await dbSet('config','asKey',asKey); await dbSet('config','asVoice',asVoice);
+  await dbSet('config','voiceType',voiceType); await dbSet('config','showInput',input);
+
+  const m=input.match(/show_id=([a-f0-9]+)/i)||input.match(/id=([a-f0-9]{30,})/i);
+  activeShowId=m?m[1]:input;
+  if(!activeShowId){toast('Enter a valid show ID or URL','warn');return;}
+  if(!authToken){toast('Save your CMS auth token first','warn');return;}
+
+  setStatus('load','Loading...');
+  document.getElementById('loadBtn').disabled=true;
+  document.getElementById('epList').innerHTML='<div style="padding:16px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)">Fetching...</div>';
+
+  try{
+    const r=await fetch(`${CMS_BASE}/book.show_episodes?show_id=${activeShowId}&view=cms&is_novel=0`,{headers:hdrs()});
+    if(!r.ok) throw new Error(`HTTP ${r.status} — check token`);
+    const d=await r.json(), res=d.result;
+    episodes=res.episodes||[];
+    document.getElementById('topTitle').textContent=res.show_title||activeShowId;
+    document.getElementById('epCount').textContent=String(episodes.length);
+    renderEpList(episodes);
+    setStatus('ready',`${episodes.length} eps`);
+    toast(`Loaded: ${res.show_title}`,'ok');
+    if(!episodes.length){
+      document.getElementById('epList').innerHTML=`<div style="padding:12px"><div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">No episodes in response. Enter chapter_id directly:</div><div class="row"><input class="inp" id="chapInp" placeholder="chapter_id..." style="font-size:10px"/><button class="btn btn-p btn-sm" onclick="loadChapter(document.getElementById('chapInp').value,-1)">Go</button></div></div>`;
+    }
+  }catch(e){
+    setStatus('err','Error'); toast('Load failed: '+e.message,'err');
+    document.getElementById('epList').innerHTML=`<div style="padding:14px;font-family:var(--mono);font-size:10px;color:var(--red)">${e.message}</div>`;
+  }
+  document.getElementById('loadBtn').disabled=false;
+}
+
+function renderEpList(eps){
+  const el=document.getElementById('epList');
+  el.innerHTML=eps.map((ep,i)=>{
+    const st=ep.audio_status||ep.status||'';
+    const qc=st==='issues_in_raw'||st==='raw_under_qc'||st.toLowerCase().includes('issue')||st.toLowerCase().includes('qc');
+    return `<div class="ep-item" onclick="loadChapter('${ep.chapter_id}',${i})" id="epi-${i}">
+      <div class="ep-title">${ep.chapter_title||`Ep ${i+1}`}${qc?`<span class="ep-badge">QC</span>`:''}</div>
+      <div class="ep-meta">${ep.audio_duration?fmtDur(ep.audio_duration)+' · ':''}<span style="font-size:9px">${st.replace(/_/g,' ')}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Load Episode ─────────────────────────────────────────────
+async function loadChapter(chapId, idx){
+  if(!chapId){toast('Enter chapter_id','warn');return;}
+  if(!authToken){toast('No auth token','warn');return;}
+  document.querySelectorAll('.ep-item').forEach(e=>e.classList.remove('active'));
+  if(idx>=0) document.getElementById(`epi-${idx}`)?.classList.add('active');
+  setStatus('load','Loading...'); showOv('⏳','Loading Episode','Fetching QC remarks...',0);
+
+  try{
+    const r=await fetch(`${CMS_BASE}/book.episode_details?chapter_id=${chapId}&is_novel=0`,{headers:hdrs()});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json(), ch=d.result?.chapter_details;
+    if(!ch) throw new Error('No chapter_details');
+    activeEp=ch; activeEp.book_id = ch.book_id || ''; finalAudioUrl=null; finalAudioBlob=null; RS={};
+
+    // Auto-detect voice from CMS episode data
+    const cmsVoice = ch.text_to_speech_details?.assigned_voice_id || '';
+    if(cmsVoice && cmsVoice !== asVoice){
+      asVoice = cmsVoice;
+      document.getElementById('asVoiceInp').value = cmsVoice;
+      await dbSet('config','asVoice', cmsVoice);
+      toast('Voice auto-set from CMS: ' + cmsVoice, 'ok');
+    }
+
+    // Store tts job details for later use
+    activeEp._ttsJobDetails = ch.text_to_speech_details || null;
+    activeEp._bookId = ch.book_id || '';
+
+    remarks=(ch.qc_details||[]).map((qc,i)=>({
+      idx:i, time:qc.time, issueType:qc.issue_type||'',
+      userEmail:qc.user_email||'', timestamp:qc.timestamp||'',
+      audioStatus:qc.audio_status||'', cmsStatus:qc.status||'pending',
+      scriptLine:extractLine(qc.remarks), note:extractNote(qc.remarks),
+      rawRemarks:qc.remarks, needsPatch:!!extractLine(qc.remarks),
+    }));
+
+    for(const r2 of remarks){
+      RS[r2.idx]={scriptLine:r2.scriptLine,takes:[null,null,null],acceptedTake:-1,discarded:[],status:'idle'};
+      for(let t=0;t<3;t++){
+        const blob=await dbGetBlob(`${chapId}_r${r2.idx}_t${t}`);
+        if(blob) RS[r2.idx].takes[t]=URL.createObjectURL(blob);
+        if(RS[r2.idx].takes[t]) RS[r2.idx].status='done';
+      }
+      const acc=await dbGet('config',`${chapId}_r${r2.idx}_acc`);
+      if(acc!=null && acc>=0){ RS[r2.idx].acceptedTake=acc; RS[r2.idx].status='accepted'; }
+    }
+
+    document.getElementById('topTitle').textContent=ch.chapter_title||'Episode';
+    document.getElementById('genAllBtn').style.display='inline-flex';
+    updateStitchBtn(); renderContent();
+    setStatus('ready',`${remarks.filter(r2=>r2.needsPatch).length} patches needed`);
+    hideOv(); toast(`Loaded: ${ch.chapter_title}`,'ok');
+  }catch(e){
+    setStatus('err','Error'); hideOv(); toast('Load failed: '+e.message,'err');
+  }
+}
+
+// ── Extract Helpers ──────────────────────────────────────────
+function extractLine(remarks){
+  if(!remarks) return '';
+  const OPEN=['"','\u201c','\u00ab','\u2018'], CLOSE=['"','\u201d','\u00bb','\u2019'];
+  const m=remarks.match(/[Ll]ine\s+from\s+script\s*[-\u2013:]*\s*/);
+  if(m){
+    const after=remarks.slice(m.index+m[0].length);
+    for(let i=0;i<OPEN.length;i++){
+      const oi=after.indexOf(OPEN[i]);
+      if(oi!==-1){ const ci=after.indexOf(CLOSE[i],oi+1); return ci!==-1?after.slice(oi+1,ci).trim():after.slice(oi+1).split('\n')[0].trim(); }
+    }
+    return after.split('\n')[0].trim();
+  }
+  return '';
+}
+function extractNote(remarks){
+  if(!remarks) return '';
+  const m=remarks.match(/[Nn]ote\s*[-\u2013:]*\s*["\u201c\u00ab]?(.+)/s);
+  return m?m[1].replace(/^["\u201c\u00ab]|["\u201d\u00bb]$/g,'').split('\n')[0].trim():'';
+}
+
+// ── Render ───────────────────────────────────────────────────
+function renderContent(){
+  const mc=document.getElementById('mainContent');
+  if(!remarks.length){ mc.innerHTML=`<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">No QC remarks</div><div class="empty-sub">This episode has no pending QC notes</div></div>`; return; }
+
+  const needed=remarks.filter(r=>r.needsPatch);
+  const accepted=needed.filter(r=>RS[r.idx].acceptedTake>=0);
+  let html='';
+
+  html+=`<div class="op-bar">
+    <div class="op-lbl">Accepted: <strong style="color:var(--green)">${accepted.length}</strong> / ${needed.length} patches</div>
+    <div class="op-count">${accepted.length===needed.length&&needed.length>0?'✓ All accepted — stitch ready!':accepted.length>0?`${needed.length-accepted.length} remaining`:'Generate and accept patches'}</div>
+  </div>`;
+
+  if(finalAudioUrl){
+    html+=`<div class="final-section">
+      <div class="final-title">🎵 Final Stitched Episode — Ready to Approve</div>
+      <audio controls src="${finalAudioUrl}" style="width:100%" preload="metadata"></audio>
+      <div class="final-actions">
+        <a href="${finalAudioUrl}" download="stitched_${activeEp.chapter_id}.wav" class="btn btn-g btn-sm">⬇ Download WAV</a>
+        <button class="btn btn-green btn-sm" onclick="uploadToCMS()">⬆ Approve &amp; Upload to CMS</button>
+      </div>
+      <div id="uploadStatus"></div>
+    </div>`;
+  }
+
+  html+=`<div class="remarks-grid">${remarks.map(r=>mkCard(r)).join('')}</div>`;
+  mc.innerHTML=html;
+}
+
+function mkCard(r){
+  const st=RS[r.idx];
+  const tc=r.issueType.toLowerCase().includes('misp')?'t-misp':r.issueType.toLowerCase().includes('mod')?'t-mod':'t-qual';
+  const cc=st.status==='accepted'?'rc-acc':st.status==='discarded'?'rc-dis':'';
+  return `<div class="rc ${cc}" id="rc-${r.idx}">
+    <div class="rc-hdr">
+      <span class="rc-time">⏱ ${r.time}</span>
+      <span class="rc-type ${tc}">${r.issueType||'QC'}</span>
+      ${st.status==='accepted'?`<span class="rc-sbadge rsb-acc">✓ Take ${st.acceptedTake+1} Accepted</span>`:''}
+      ${st.status==='discarded'?`<span class="rc-sbadge rsb-dis">✗ Discarded</span>`:''}
+      <span class="rc-email">${r.userEmail}</span>
+    </div>
+    <div class="rc-body">
+      ${r.note?`<div class="note-box"><div class="note-lbl">📝 QC Direction</div><div class="note-txt">${esc(r.note)}</div></div>`:''}
+      <div style="margin-bottom:12px">
+        <div class="script-lbl">Script Line <span class="edit-hint">✏ Click to edit</span></div>
+        ${r.needsPatch
+          ?`<textarea class="script-ta" id="sl-${r.idx}" rows="2" oninput="RS[${r.idx}].scriptLine=this.value">${esc(st.scriptLine)}</textarea>`
+          :`<div class="no-script">No "Line from script" found — not eligible for patch generation</div>`}
+      </div>
+      ${r.needsPatch?`
+        <div class="gen-row">
+          <button class="gen-btn" onclick="genTakes(${r.idx})" id="gb-${r.idx}" ${st.status==='generating'?'disabled':''}>
+            ${st.status==='generating'?'⏳ Generating 3 takes...':'▶ Generate 3 Takes'}
+          </button>
+          ${st.takes.some(t=>t)?`<button class="btn btn-g btn-sm" onclick="genTakes(${r.idx})">↺ Regen</button>`:''}
+        </div>
+        <div class="takes-grid" id="tg-${r.idx}">${[0,1,2].map(ti=>mkTake(r.idx,ti)).join('')}</div>
+      `:''}
+    </div>
+  </div>`;
+}
+
+function mkTake(ri,ti){
+  const st=RS[ri], take=st.takes[ti];
+  const isGen=st.status==='generating'&&!take;
+  const isAcc=st.acceptedTake===ti, isDis=(st.discarded||[]).includes(ti);
+  const cls=isGen?'tk-gen':take?(isAcc?'tk-acc':isDis?'tk-dis':''):'';
+  return `<div class="tc ${cls}" id="tc-${ri}-${ti}">
+    <div class="take-num">Take ${ti+1}${isAcc?' ✓':''}</div>
+    ${isGen?`<div class="take-spin">🎙 Generating...</div>`
+    :take?`<audio controls src="${take}" style="width:100%;height:28px;margin-bottom:8px" preload="metadata"></audio>
+           <div class="take-acts"><button class="ta-acc" onclick="accTake(${ri},${ti})" ${isAcc?'disabled':''}>✓ Accept</button>
+           <button class="ta-dis" onclick="disTake(${ri},${ti})">✗</button></div>`
+    :`<div class="take-empty">Not generated</div>`}
+  </div>`;
+}
+
+// ── Generate Takes ───────────────────────────────────────────
+async function genTakes(ri){
+  const st=RS[ri], line=st.scriptLine||remarks[ri].scriptLine;
+  if(!line.trim()){toast('Script line is empty — edit it first','warn');return;}
+  asKey=document.getElementById('asKeyInp').value.trim();
+  asVoice=document.getElementById('asVoiceInp').value.trim();
+  voiceType=document.getElementById('voiceType').value;
+  st.status='generating'; st.takes=[null,null,null]; st.acceptedTake=-1; st.discarded=[];
+  refreshCard(ri);
+  const chapId=activeEp.chapter_id;
+  await Promise.allSettled([0,1,2].map(ti=>genOneTake(line,ri,ti,chapId)));
+  st.status=st.takes.some(t=>t)?'done':'error';
+  refreshCard(ri); updateStitchBtn();
+  toast(`3 takes generated for remark ${ri+1}`,'ok');
+}
+
+async function genOneTake(text,ri,ti,chapId){
+  const st=RS[ri], h={'x-api-key':asKey,'Content-Type':'application/json'};
+  try{
+    const sr=await fetch(`${AS_BASE}/content/script`,{method:'POST',headers:h,body:JSON.stringify({scriptText:text,projectName:'PatchStudio'})});
+    const sd=JSON.parse(await sr.text());
+    const scriptId=sd.scriptId||sd.script_id||sd.data?.scriptId;
+    if(!scriptId) throw new Error('No scriptId returned');
+
+    const ttsBody={scriptId,voice:asVoice,sync:true};
+    if(voiceType==='expressive') ttsBody.voiceIntelligence=true;
+    const tr=await fetch(`${AS_BASE}/speech/tts`,{method:'POST',headers:h,body:JSON.stringify(ttsBody)});
+    const td=JSON.parse(await tr.text());
+    let audioUrl=td.url||td.audioUrl||td.data?.url||td.data?.sections?.[0]?.url||td.sections?.[0]?.url;
+    const speechId=td.speechId||td.speech_id||td.data?.speechId;
+
+    if(!audioUrl&&speechId){
+      for(let i=0;i<20;i++){
+        await sleep(2500);
+        const p=await fetch(`${AS_BASE}/speech/tts/${speechId}`,{headers:h});
+        if(p.ok){const pd=await p.json(); audioUrl=pd.url||pd.audioUrl||pd.data?.url||pd.data?.sections?.[0]?.url; if(audioUrl) break;}
+      }
+    }
+    if(!audioUrl) throw new Error('No audio URL');
+
+    let blob;
+    const dl=await fetch(audioUrl,{headers:{'x-api-key':asKey}});
+    if(dl.ok){ blob=await dl.blob(); } else { const dl2=await fetch(audioUrl); if(!dl2.ok) throw new Error('Download failed'); blob=await dl2.blob(); }
+
+    await dbSetBlob(`${chapId}_r${ri}_t${ti}`,blob);
+    st.takes[ti]=URL.createObjectURL(blob);
+    const el=document.getElementById(`tc-${ri}-${ti}`);
+    if(el) el.outerHTML=mkTake(ri,ti);
+  }catch(e){
+    console.error(`Take ${ti} err:`,e); toast(`Take ${ti+1}: ${e.message}`,'err');
+  }
+}
+
+async function accTake(ri,ti){
+  RS[ri].acceptedTake=ti; RS[ri].status='accepted';
+  await dbSet('config',`${activeEp.chapter_id}_r${ri}_acc`,ti);
+  refreshCard(ri); updateStitchBtn();
+  toast(`Take ${ti+1} accepted ✓`,'ok');
+}
+function disTake(ri,ti){
+  if(!RS[ri].discarded) RS[ri].discarded=[];
+  if(!RS[ri].discarded.includes(ti)) RS[ri].discarded.push(ti);
+  if(RS[ri].acceptedTake===ti){RS[ri].acceptedTake=-1;RS[ri].status='done';}
+  const el=document.getElementById(`tc-${ri}-${ti}`); if(el) el.outerHTML=mkTake(ri,ti);
+  updateStitchBtn();
+}
+async function generateAllPending(){
+  const pending=remarks.filter(r=>r.needsPatch&&RS[r.idx].status==='idle');
+  if(!pending.length){toast('No idle patches','warn');return;}
+  for(const r of pending) await genTakes(r.idx);
+}
+
+// ── Stitch All ───────────────────────────────────────────────
+function updateStitchBtn(){
+  const accepted=remarks.filter(r=>r.needsPatch&&RS[r.idx].acceptedTake>=0);
+  const needed=remarks.filter(r=>r.needsPatch);
+  const btn=document.getElementById('stitchAllBtn');
+  if(accepted.length>0){ btn.style.display='inline-flex'; btn.textContent=`🔗 Stitch ${accepted.length}/${needed.length} & Preview`; }
+  else btn.style.display='none';
+}
+
+async function stitchAll(){
+  const accepted=remarks.filter(r=>r.needsPatch&&RS[r.idx].acceptedTake>=0);
+  if(!accepted.length){toast('Accept at least one take first','warn');return;}
+  if(!activeEp?.raw_media_url){ toast('No raw_media_url on this episode — audio not yet on CMS','warn'); return; }
+
+  showOv('🔊','Fetching Episode Audio','Downloading from CMS...',10);
+  try{
+    const epResp=await fetch(activeEp.raw_media_url);
+    if(!epResp.ok) throw new Error('Cannot fetch episode audio: '+epResp.status);
+    const epBlob=await epResp.blob();
+    showOv('🎛','Decoding Audio','Preparing buffers...',25);
+    const epBuf=await blobToAudioBuf(epBlob);
+
+    // Sort patches by start time
+    const sorted=[...accepted].sort((a,b)=>parseTime(a.time)-parseTime(b.time));
+    showOv('🎙','Loading Patches','Decoding accepted takes...',40);
+    const patches=[];
+    for(const r of sorted){
+      const pBlob=await fetch(RS[r.idx].takes[RS[r.idx].acceptedTake]).then(x=>x.blob());
+      const pBuf=await blobToAudioBuf(pBlob);
+      patches.push({startSec:parseTime(r.time),buf:pBuf});
+    }
+
+    showOv('✂️','Stitching','Replacing bad audio sections...',60);
+
+    // Build segments: keep good parts, replace bad parts with patches
+    const segments=[];
+    let prevEnd=0;
+    for(const p of patches){
+      if(p.startSec>prevEnd) segments.push({type:'ep',start:prevEnd,end:p.startSec});
+      segments.push({type:'patch',buf:p.buf});
+      prevEnd=p.startSec+p.buf.duration; // replace from startSec until patch ends
+    }
+    if(prevEnd<epBuf.duration) segments.push({type:'ep',start:prevEnd,end:epBuf.duration});
+
+    const sr=epBuf.sampleRate, ch=epBuf.numberOfChannels;
+    const totalLen=segments.reduce((s,seg)=>s+(seg.type==='ep'?(seg.end-seg.start)*sr:seg.buf.length),0);
+    const outCtx=new OfflineAudioContext(ch,Math.ceil(totalLen),sr);
+    let cursor=0;
+    for(const seg of segments){
+      let buf=seg.type==='ep'?cropBuf(epBuf,seg.start,seg.end):matchBuf(seg.buf,sr,ch);
+      const src=outCtx.createBufferSource(); src.buffer=buf; src.connect(outCtx.destination); src.start(cursor);
+      cursor+=buf.duration;
+    }
+    showOv('💾','Encoding','Converting to WAV...',80);
+    const rendered=await outCtx.startRendering();
+    finalAudioBlob=bufToWav(rendered);
+    finalAudioUrl=URL.createObjectURL(finalAudioBlob);
+    showOv('✅','Done!','',100);
+    await sleep(500); hideOv();
+    renderContent();
+    // scroll to top
+    document.getElementById('mainContent').scrollTop=0;
+    toast(`Stitched ${patches.length} patches ✓`,'ok');
+  }catch(e){
+    hideOv(); toast('Stitch failed: '+e.message,'err'); console.error(e);
+  }
+}
+
+// ── CMS Upload ───────────────────────────────────────────────
+async function uploadToCMS(){
+  if(!finalAudioBlob){toast('No stitched audio','warn');return;}
+  const statusEl=document.getElementById('uploadStatus');
+  statusEl.innerHTML='<div class="upload-status us-load">⏳ Getting S3 upload URL from CMS...</div>';
+  try{
+    // Step 1: Get presigned S3 URL
+    // CMS uses AudioStack internally — we upload the stitched WAV to replace media_url
+    const bookId = activeEp.book_id || activeEp._bookId || '';
+    const chapId = activeEp.chapter_id;
+
+    // Try the presigned URL endpoint (update once confirmed from network tab)
+    const presignResp = await fetch(
+      `${CMS_BASE}/book.get_upload_url?chapter_id=${chapId}&book_id=${bookId}&is_novel=0&file_type=audio`,
+      { headers: hdrs() }
+    );
+
+    if(!presignResp.ok){
+      // Fallback: show manual download + instructions
+      statusEl.innerHTML=`<div class="upload-status us-err" style="line-height:1.7">
+        ⚠ CMS upload endpoint not yet confirmed.<br>
+        Share the network tab "Generate Audio" request URL to complete auto-upload.<br>
+        <a href="${finalAudioUrl}" download="stitched_${chapId}.wav" style="color:var(--accent);font-weight:700">⬇ Download WAV to upload manually</a>
+      </div>`;
+      toast('Share the Generate Audio network request to enable auto-upload','warn');
+      return;
+    }
+
+    const presignData = await presignResp.json();
+    const s3Url  = presignData.upload_url || presignData.presigned_url || presignData.url || presignData.s3_url;
+    const fileKey = presignData.file_key || presignData.key || presignData.s3_key;
+    if(!s3Url) throw new Error('No S3 URL in CMS response: ' + JSON.stringify(presignData));
+
+    // Step 2: Upload WAV to S3
+    statusEl.innerHTML='<div class="upload-status us-load">⬆ Uploading stitched audio to S3...</div>';
+    const s3Resp = await fetch(s3Url, {
+      method: 'PUT',
+      body: finalAudioBlob,
+      headers: { 'Content-Type': 'audio/wav' }
+    });
+    if(!s3Resp.ok) throw new Error('S3 upload failed: HTTP ' + s3Resp.status);
+
+    // Step 3: Notify CMS — update media_url for this chapter
+    statusEl.innerHTML='<div class="upload-status us-load">📡 Updating CMS media_url...</div>';
+    const notifyResp = await fetch(`${CMS_BASE}/book.update_chapter_media`, {
+      method: 'POST',
+      headers: hdrs(),
+      body: JSON.stringify({
+        chapter_id: chapId,
+        book_id: bookId,
+        file_key: fileKey,
+        is_novel: 0,
+        media_type: 'final_audio'
+      })
+    });
+    if(!notifyResp.ok) throw new Error('CMS update failed: HTTP ' + notifyResp.status);
+
+    statusEl.innerHTML='<div class="upload-status us-ok">✓ Stitched audio uploaded to CMS media_url!</div>';
+    toast('Approved and uploaded to CMS ✓','ok');
+  }catch(e){
+    statusEl.innerHTML=`<div class="upload-status us-err">
+      ✗ ${esc(e.message)}<br>
+      <a href="${finalAudioUrl}" download="stitched_${activeEp?.chapter_id||'ep'}.wav" style="color:var(--accent)">⬇ Download WAV instead</a>
+    </div>`;
+    toast('Upload error: '+e.message,'err');
+  }
+}
+
+// ── Audio Utilities ──────────────────────────────────────────
+async function blobToAudioBuf(blob){
+  const ab=await blob.arrayBuffer(), ctx=new AudioContext();
+  try{ return await ctx.decodeAudioData(ab); } finally{ ctx.close(); }
+}
+function cropBuf(buf,s,e){
+  const sr=buf.sampleRate,ch=buf.numberOfChannels;
+  const si=Math.floor(s*sr),ei=Math.min(Math.floor(e*sr),buf.length),len=Math.max(1,ei-si);
+  const out=new AudioBuffer({length:len,numberOfChannels:ch,sampleRate:sr});
+  for(let c=0;c<ch;c++) out.copyToChannel(buf.getChannelData(c).slice(si,ei),c);
+  return out;
+}
+function matchBuf(buf,targetSr,targetCh){
+  if(buf.sampleRate===targetSr&&buf.numberOfChannels===targetCh) return buf;
+  const len=Math.floor(buf.duration*targetSr);
+  const out=new AudioBuffer({length:len,numberOfChannels:targetCh,sampleRate:targetSr});
+  for(let c=0;c<targetCh;c++){
+    const sc=c<buf.numberOfChannels?c:buf.numberOfChannels-1;
+    const sd=buf.getChannelData(sc),od=out.getChannelData(c);
+    const ratio=sd.length/len;
+    for(let i=0;i<len;i++) od[i]=sd[Math.floor(i*ratio)]||0;
+  }
+  return out;
+}
+function parseTime(t){
+  const s=t.split('-')[0].trim().split(':').map(Number);
+  return (s[0]||0)*60+(s[1]||0);
+}
+function bufToWav(buf){
+  const ch=buf.numberOfChannels,sr=buf.sampleRate,len=buf.length,bps=2;
+  const ds=len*ch*bps,ab=new ArrayBuffer(44+ds),v=new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF');v.setUint32(4,36+ds,true);ws(8,'WAVE');ws(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*ch*bps,true);v.setUint16(32,ch*bps,true);
+  v.setUint16(34,16,true);ws(36,'data');v.setUint32(40,ds,true);
+  let o=44;
+  for(let i=0;i<len;i++) for(let c=0;c<ch;c++){
+    const s=Math.max(-1,Math.min(1,buf.getChannelData(c)[i]));
+    v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);o+=2;
+  }
+  return new Blob([ab],{type:'audio/wav'});
+}
+
+// ── UI ───────────────────────────────────────────────────────
+function refreshCard(ri){
+  const el=document.getElementById(`rc-${ri}`); if(el) el.outerHTML=mkCard(remarks[ri]);
+  const op=document.querySelector('.op-bar');
+  if(op){
+    const accepted=remarks.filter(r=>r.needsPatch&&RS[r.idx].acceptedTake>=0);
+    const needed=remarks.filter(r=>r.needsPatch);
+    op.querySelector('.op-lbl').innerHTML=`Accepted: <strong style="color:var(--green)">${accepted.length}</strong> / ${needed.length} patches`;
+    op.querySelector('.op-count').textContent=accepted.length===needed.length&&needed.length>0?'✓ All accepted — stitch ready!':accepted.length>0?`${needed.length-accepted.length} remaining`:'Generate and accept patches';
+  }
+}
+function setStatus(s,t){const e=document.getElementById('topStatus');e.textContent=t;e.className='status-pill '+(s==='load'?'sp-load':s==='err'?'sp-err':'sp-ready');}
+function showOv(i,t,s,p){document.getElementById('ovIcon').textContent=i;document.getElementById('ovTitle').textContent=t;document.getElementById('ovSub').textContent=s;document.getElementById('ovProg').style.width=p+'%';document.getElementById('overlay').classList.add('show');}
+function hideOv(){document.getElementById('overlay').classList.remove('show');}
+function toast(msg,type='ok'){const e=document.createElement('div');e.className=`toast t-${type}`;e.innerHTML=(type==='ok'?'✓':type==='err'?'✗':'⚠')+' '+msg;document.getElementById('toasts').appendChild(e);setTimeout(()=>e.remove(),4000);}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDur(s){const m=Math.floor(s/60);return `${m}:${String(s%60).padStart(2,'0')}`;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
