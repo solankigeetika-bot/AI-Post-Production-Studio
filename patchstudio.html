@@ -335,18 +335,23 @@ function renderShowsList(){
     el.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--muted2);padding:6px 0">No shows yet — click + Add Show</div>`;
     return;
   }
-  el.innerHTML = shows.map(s => `
-    <div style="background:var(--surface2);border:1px solid ${activeShowConfig?.id===s.id?'var(--accent)':'var(--border)'};border-radius:8px;padding:8px 10px;cursor:pointer;transition:all .15s" onclick="selectShow(${s.id})" id="sc-${s.id}">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:${activeShowConfig?.id===s.id?'var(--accent)':'var(--text)'}">${s.name}</div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn btn-g btn-xs" onclick="event.stopPropagation();editShow(${s.id})" style="padding:3px 7px;font-size:10px">✏</button>
-          <button class="btn btn-xs" onclick="event.stopPropagation();deleteShow(${s.id})" style="padding:3px 7px;font-size:10px;background:var(--red-light);color:var(--red);border:1px solid #fca5a5">✕</button>
+  el.innerHTML = shows.map(s => {
+    const isActive = activeShowConfig?.id===s.id;
+    return `<div style="background:${isActive?'var(--accent-light)':'var(--surface2)'};border:2px solid ${isActive?'var(--accent)':'var(--border)'};border-radius:8px;overflow:hidden" id="sc-${s.id}">
+      <div style="padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px" onclick="selectShow(${s.id})">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isActive?'var(--accent)':'var(--text)'}">${s.name}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(s.showInput||'').substring(0,32)}...</div>
         </div>
+        ${isActive?'<span style="font-family:var(--mono);font-size:9px;color:var(--accent);flex-shrink:0">● active</span>':''}
       </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.showInput?.substring?.(0,35)||''}...</div>
-    </div>
-  `).join('');
+      <div style="display:flex;border-top:1px solid var(--border);background:var(--surface)">
+        <button onclick="selectShow(${s.id})" style="flex:1;font-family:var(--sans);font-weight:700;font-size:10px;padding:5px;border:none;cursor:pointer;background:transparent;color:var(--accent)">▶ Load</button>
+        <button onclick="editShow(${s.id})" style="flex:1;font-family:var(--sans);font-weight:600;font-size:10px;padding:5px;border:none;border-left:1px solid var(--border);cursor:pointer;background:transparent;color:var(--muted)">✏ Edit</button>
+        <button onclick="deleteShow(${s.id})" style="flex:1;font-family:var(--sans);font-weight:600;font-size:10px;padding:5px;border:none;border-left:1px solid var(--border);cursor:pointer;background:transparent;color:var(--red)">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function openAddShow(){ 
