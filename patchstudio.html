@@ -440,7 +440,7 @@ async function loadShow(directInput){
   if(!authToken||!uid){toast('Save your CMS access-token and uid first','warn');return;}
 
   setStatus('load','Loading...');
-  document.getElementById('loadBtn').disabled=true;
+  const loadBtnEl=document.getElementById('loadBtn'); if(loadBtnEl) loadBtnEl.disabled=true;
   document.getElementById('epList').innerHTML='<div style="padding:16px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)">Fetching...</div>';
 
   try{
@@ -482,7 +482,7 @@ async function loadShow(directInput){
     setStatus('err','Error'); toast('Load failed: '+e.message,'err');
     document.getElementById('epList').innerHTML=`<div style="padding:14px;font-family:var(--mono);font-size:10px;color:var(--red)">${e.message}</div>`;
   }
-  document.getElementById('loadBtn').disabled=false;
+  if(loadBtnEl) loadBtnEl.disabled=false;
 }
 
 function renderEpList(eps, totalEps, showTitle){
