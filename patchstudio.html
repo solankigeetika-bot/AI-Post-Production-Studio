@@ -491,16 +491,18 @@ function renderEpList(eps, totalEps, showTitle){
     el.innerHTML=eps.map((ep,i)=>{
       const st=ep.audio_status||ep.status||'';
       const qc=st==='issues_in_raw'||st==='raw_under_qc'||st.toLowerCase().includes('issue')||st.toLowerCase().includes('qc');
-      return `<div class="ep-item" id="epi-${i}">
-        <div class="ep-title">${ep.chapter_title||`Ep ${i+1}`}${qc?`<span class="ep-badge">QC</span>`:''}</div>
-        <div class="ep-meta">${ep.audio_duration?fmtDur(ep.audio_duration)+' · ':''}<span style="font-size:9px">${st.replace(/_/g,' ')}</span></div>
-      </div>`;
+      return '<div class="ep-item" id="epi-'+i+'" style="cursor:pointer">'
+        +'<div class="ep-title">'+(ep.chapter_title||'Ep '+(i+1))+(qc?'<span class="ep-badge">QC</span>':'')+'</div>'
+        +'<div class="ep-meta">'+(ep.audio_duration?fmtDur(ep.audio_duration)+' · ':'')+'<span style="font-size:9px">'+(st.replace(/_/g,' '))+'</span></div>'
+        +'</div>';
     }).join('');
-    // Attach click listeners
-    eps.forEach((ep,i)=>{
-      const el2=document.getElementById(`epi-${i}`);
-      if(el2) el2.addEventListener('click',()=>loadChapter(ep.chapter_id,i));
-    });
+    // Attach click listeners after DOM render
+    setTimeout(()=>{
+      eps.forEach((ep,i)=>{
+        const el2=document.getElementById('epi-'+i);
+        if(el2) el2.addEventListener('click',()=>loadChapter(ep.chapter_id,i));
+      });
+    },50);
     return;
   }
 
@@ -529,7 +531,7 @@ function renderEpList(eps, totalEps, showTitle){
 
 // ── Load Episode ─────────────────────────────────────────────
 async function loadChapter(chapId, idx){
-  if(!chapId){toast('Enter chapter_id','warn');return;}
+  if(!chapId){ return; }
   if(!authToken||!uid){toast('No credentials — save access-token and uid first','warn');return;}
   document.querySelectorAll('.ep-item').forEach(e=>e.classList.remove('active'));
   if(idx>=0) document.getElementById(`epi-${idx}`)?.classList.add('active');
